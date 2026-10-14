@@ -19,8 +19,27 @@ pub fn boost_thread() {
     }
 }
 
+/// Size of the primary monitor.
 pub fn screen() -> (i32, i32) {
     unsafe { (GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN)) }
+}
+
+/// The whole desktop across all monitors: (x, y, width, height).
+pub fn desk() -> (i32, i32, i32, i32) {
+    unsafe {
+        let r = (
+            GetSystemMetrics(SM_XVIRTUALSCREEN),
+            GetSystemMetrics(SM_YVIRTUALSCREEN),
+            GetSystemMetrics(SM_CXVIRTUALSCREEN),
+            GetSystemMetrics(SM_CYVIRTUALSCREEN),
+        );
+        if r.2 > 0 && r.3 > 0 {
+            r
+        } else {
+            let (w, h) = screen();
+            (0, 0, w, h)
+        }
+    }
 }
 
 pub fn set_cursor(x: i32, y: i32) {
@@ -96,12 +115,12 @@ fn mouse(dx: i32, dy: i32, data: u32, flags: u32) {
     });
 }
 
-/// Absolute move to a pixel of the primary screen.
+/// Absolute move to a pixel of the desktop (any monitor).
 pub fn move_abs(x: i32, y: i32) {
-    let (w, h) = screen();
-    let ax = ((x as i64 * 65536 + 32768) / w as i64) as i32;
-    let ay = ((y as i64 * 65536 + 32768) / h as i64) as i32;
-    mouse(ax, ay, 0, MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE);
+    let (vx, vy, w, h) = desk();
+    let ax = (((x - vx) as i64 * 65536 + 32768) / w as i64) as i32;
+    let ay = (((y - vy) as i64 * 65536 + 32768) / h as i64) as i32;
+    mouse(ax, ay, 0, MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_VIRTUALDESK);
 }
 
 /// idx: 0 L, 1 R, 2 M, 3 X1, 4 X2

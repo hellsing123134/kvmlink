@@ -1,13 +1,13 @@
 #![windows_subsystem = "windows"]
 
-mod client;
 mod clip;
 mod config;
+mod net;
 mod proto;
-mod svc;
-mod server;
 mod setup;
+mod svc;
 mod sys;
+mod tray;
 mod ui;
 
 fn main() {
