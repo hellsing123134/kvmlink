@@ -377,7 +377,7 @@ pub fn start_server(port: u16) {
             }
         }
         let Some(l) = listener else {
-            crate::ui::log(format!("Буфер обмена: не удалось занять порт {port}"));
+            crate::ui::log(format!("Clipboard: port {port} is busy"));
             return;
         };
         let _ = l.set_nonblocking(true);

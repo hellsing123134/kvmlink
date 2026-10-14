@@ -213,7 +213,7 @@ fn session(mut s: TcpStream, gen: u32) {
     }
     let key = key();
     if key.is_empty() {
-        crate::ui::log("Ноутбук пытается подключиться, но устройства ещё не сопряжены");
+        crate::ui::log("A device tried to connect, but it is not paired yet");
         return;
     }
     let mut salt = [0u8; SALT];
@@ -233,12 +233,12 @@ fn session(mut s: TcpStream, gen: u32) {
         }
     };
     if !matches!(hello, Some(m) if m.t == HELLO) {
-        crate::ui::log("Отклонено подключение: ключ не совпадает (сопрягите устройства заново)");
+        crate::ui::log("Connection rejected: wrong key (pair the devices again)");
         return;
     }
     let peer = s.peer_addr().map(|a| a.ip().to_string()).unwrap_or_default();
-    crate::ui::log(format!("Ноутбук подключён: {peer}"));
-    crate::ui::status(crate::ui::Status::Connected, &format!("Ноутбук подключён ({peer})"));
+    crate::ui::log(format!("Device connected: {peer}"));
+    crate::ui::status(crate::ui::Status::Connected, &format!("Connected to {peer}"));
 
     let (tx, rx) = channel();
     let ws = match s.try_clone() {
@@ -280,9 +280,9 @@ fn session(mut s: TcpStream, gen: u32) {
     leave_remote(None);
     *TX.lock().unwrap() = None;
     let _ = wt.join();
-    crate::ui::log("Ноутбук отключён");
+    crate::ui::log("Device disconnected");
     if RUN.load(Relaxed) == gen {
-        crate::ui::status(crate::ui::Status::Waiting, "Ожидание ноутбука");
+        crate::ui::status(crate::ui::Status::Waiting, "Waiting for device");
     }
 }
 
@@ -370,9 +370,9 @@ fn pairing(mut s: TcpStream) {
             w.fails += 1;
             if w.fails >= PAIR_MAX_FAILS {
                 *g = None;
-                crate::ui::log("Сопряжение отменено: 3 неверных PIN подряд");
+                crate::ui::log("Pairing cancelled: 3 wrong PINs in a row");
             } else {
-                crate::ui::log("Неверный PIN при сопряжении");
+                crate::ui::log("Wrong PIN entered during pairing");
             }
         }
         return;
@@ -384,7 +384,7 @@ fn pairing(mut s: TcpStream) {
     let ltk = long_term_key(&k);
     set_key(&ltk);
     let peer = s.peer_addr().map(|a| a.ip().to_string()).unwrap_or_default();
-    crate::ui::log(format!("Устройство {peer} сопряжено"));
+    crate::ui::log(format!("Device {peer} paired"));
     crate::ui::paired(&ltk);
 }
 
@@ -415,7 +415,7 @@ pub fn start(port: u16, side_left: bool) -> Result<(), String> {
     REMOTE.store(false, Relaxed);
     MODS.store(0, Relaxed);
 
-    let listener = TcpListener::bind(("0.0.0.0", port)).map_err(|e| format!("Не удалось занять порт {port}: {e}"))?;
+    let listener = TcpListener::bind(("0.0.0.0", port)).map_err(|e| format!("Port {port} is busy: {e}"))?;
     listener.set_nonblocking(true).map_err(|e| e.to_string())?;
     let gen = RUN.fetch_add(1, Relaxed) + 1;
     let t = std::thread::spawn(move || {

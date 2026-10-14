@@ -5,97 +5,98 @@
 <h1 align="center">KVM Link</h1>
 
 <p align="center">
-  Одна клавиатура и мышь на два компьютера с Windows по локальной сети.<br>
-  Курсор уходит за край монитора и продолжает двигаться уже на ноутбуке.
+  One keyboard and mouse for two Windows computers over your local network.<br>
+  Move the cursor past the edge of your monitor and keep working on the laptop next to it.
 </p>
 
-<p align="center"><img src="docs/screenshot.png" width="420" alt="Окно KVM Link"></p>
+<p align="center"><img src="docs/screenshot.png" width="420" alt="KVM Link window"></p>
 
-> **English:** KVM Link shares one keyboard and mouse between two Windows PCs over the LAN, like
-> Mouse Without Borders. It is a single ~0.7 MB executable written in Rust, with low latency,
-> PIN pairing (SPAKE2), ChaCha20-Poly1305 encryption, clipboard sync, and a service mode that also
-> works in UAC prompts. The UI is in Russian.
+> The window is currently in Russian. An English UI with a drag-and-drop layout editor is in progress.
 
-## Возможности
+## Features
 
-- **Переход через край экрана.** Ведите курсор за край монитора, и управление переходит на ноутбук. Вернуться можно через противоположный край. `Ctrl+Alt+F12` переключает вручную.
-- **Минимальная задержка.** Кадры по 25 байт, `TCP_NODELAY`, мелкие движения мыши склеиваются, потоки работают с высоким приоритетом. По проводу или хорошему Wi-Fi это единицы миллисекунд.
-- **Сопряжение по PIN.** ПК показывает 6 цифр, вы вводите их на ноутбуке, и дальше устройства помнят друг друга. Паролей нет.
-- **Шифрование всего трафика:** ChaCha20-Poly1305.
-- **Общий буфер обмена.** Текст и картинки до 16 МБ в обе стороны. Буфер идёт по отдельному соединению, поэтому большие копии не тормозят мышь.
-- **Поиск ПК в сети** одной кнопкой, вводить IP не нужно.
-- **Блокировка встроенной клавиатуры ноутбука**, если она сломана и сама «нажимается».
-- **Режим службы.** В нём работают окна администратора и запросы UAC.
-- **Трей и автозапуск, без установки.** Один `exe`, никаких зависимостей.
+- **Edge switching.** Push the cursor past the screen edge and control moves to the other computer. Come back through the opposite edge, or press `Ctrl+Alt+F12` to switch manually.
+- **Low latency.** 25-byte frames, `TCP_NODELAY`, coalesced mouse motion and high-priority threads. On a cable or a good Wi-Fi link the delay is a few milliseconds.
+- **PIN pairing.** One computer shows a 6-digit PIN, you type it on the other, and from then on they remember each other. No passwords.
+- **Encryption.** All traffic is encrypted with ChaCha20-Poly1305.
+- **Shared clipboard.** Text and images up to 16 MB, both ways. The clipboard uses its own connection, so big copies never slow down the mouse.
+- **LAN discovery.** Find the other computer with one click instead of typing an IP address.
+- **Block a faulty built-in keyboard.** Useful when laptop keys get stuck and type on their own.
+- **Service mode.** Keeps working in administrator windows and UAC prompts.
+- **Tray icon and autostart.** A single portable `.exe`, no installer and no dependencies.
 
-## Установка
+## Getting started
 
-1. Скачайте `kvmlink.exe` из [Releases](../../releases) и положите на **оба** компьютера.
-2. **На ПК с клавиатурой:** выберите «Этот компьютер — с клавиатурой и мышью (ПК)», укажите, с какой стороны стоит ноутбук, и нажмите **«Сопрячь устройство»**. Windows один раз спросит разрешение открыть порт в брандмауэре. На экране появится PIN.
-3. **На ноутбуке:** выберите «Этот компьютер принимает ввод (ноутбук)», нажмите **«Найти»**, введите PIN и нажмите **«Сопрячь»**.
+1. Download `kvmlink.exe` from [Releases](../../releases) and put it on **both** computers.
+2. **On the computer with the keyboard:** choose that role, pick which side the laptop is on and click the pairing button. Windows asks once to open a firewall port, then a PIN appears.
+3. **On the laptop:** choose the other role, click **Find**, type the PIN and pair.
 
-Готово: ноутбук подключится сам. После этого достаточно нажимать «Запустить» или включить «Запускать вместе с Windows».
+The laptop connects by itself. After that just start the app, or enable autostart.
 
-Крестик сворачивает окно в трей. Полностью выйти из программы можно через меню иконки в трее, пункт «Выход».
+Closing the window hides it to the tray. To quit completely, use **Exit** in the tray icon's menu.
 
-### Режим службы
+### Service mode
 
-Windows не даёт обычной программе управлять окнами, запущенными от администратора, и запросами UAC: курсор на них «застревает». Если включить **«Режим службы»** (на обоих компьютерах, один раз подтвердив UAC), программа будет запускаться при входе в систему от имени SYSTEM, как служба Mouse Without Borders в PowerToys, и эти окна заработают.
+Windows does not let a normal program control windows that run as administrator or UAC prompts, so the cursor gets "stuck" on them. With **service mode** enabled (on both computers, one UAC confirmation each) the app starts at sign-in as SYSTEM, the same approach the Mouse Without Borders service in PowerToys uses, and those windows work too.
 
-Учтите: в этом режиме тот, у кого есть ключ сопряжения, может управлять и защищёнными окнами Windows.
+Keep in mind that in this mode anyone who holds the pairing key can also control protected Windows prompts.
 
-## Безопасность
+## Security
 
-| Что | Как |
+| What | How |
 |---|---|
-| Сопряжение | [SPAKE2](https://datatracker.ietf.org/doc/rfc9382/) поверх 6-значного PIN. Перебирать PIN по записанному трафику бесполезно: на каждый PIN даётся 3 попытки, окно сопряжения открыто 2 минуты. |
-| Ключ | По итогам сопряжения выводится 256-битный ключ. Он хранится в `C:\ProgramData\kvmlink\config.txt`, папка доступна только SYSTEM, администраторам и вашему пользователю. |
-| Сеанс | Для каждого подключения берётся новая случайная соль и из неё свой ключ сеанса. Кадры шифруются ChaCha20-Poly1305 со счётчиком, поэтому подмена, повтор и перестановка кадров обнаруживаются. |
-| Сеть | Правила брандмауэра пропускают только локальную подсеть. |
+| Pairing | [SPAKE2](https://datatracker.ietf.org/doc/rfc9382/) over a 6-digit PIN. Recorded traffic does not help guessing the PIN: each PIN allows 3 attempts and the pairing window stays open for 2 minutes. |
+| Key | Pairing produces a 256-bit key stored in `C:\ProgramData\kvmlink\config.txt`. The folder is readable only by SYSTEM, Administrators and your user. |
+| Session | Every connection uses a fresh random salt and its own session key. Frames are encrypted with ChaCha20-Poly1305 and a counter, so tampering, replays and reordering are detected. |
+| Network | Firewall rules allow the local subnet only. |
 
-Чего нет: прямой секретности (forward secrecy). Если ключ из `config.txt` утечёт, заранее записанный трафик можно будет расшифровать. Чтобы сменить ключ, просто сопрягите устройства заново.
+Not provided: forward secrecy. If the key in `config.txt` leaks, previously recorded traffic can be decrypted. To change the key, simply pair the devices again.
 
-## Ограничения
+## Limitations
 
-- Только Windows 10 и 11. Одна пара устройств: ПК и ноутбук.
-- Учитывается только основной монитор.
-- Буфер обмена переносит текст и картинки, файлы не переносит.
-- Курсор передаётся абсолютными координатами, поэтому игры с raw input могут вести себя непривычно.
+- Windows 10 and 11 only. One pair of devices.
+- Only the primary monitor is used.
+- The clipboard carries text and images, not files.
+- The cursor is sent as absolute coordinates, so games that use raw input may feel unusual.
 
-## Порты
+## Ports
 
-| Порт | Протокол | Назначение |
+| Port | Protocol | Purpose |
 |---|---|---|
-| 24800 | TCP | клавиатура и мышь, сопряжение |
-| 24801 | TCP | буфер обмена |
-| 24800 | UDP | поиск ПК в сети |
+| 24800 | TCP | keyboard and mouse, pairing |
+| 24801 | TCP | clipboard |
+| 24800 | UDP | LAN discovery |
 
-Порт можно поменять в окне программы. Он должен совпадать на обоих компьютерах.
+The port can be changed in the app. It must be the same on both computers.
 
-## Сборка
+## Building
 
-Нужен [Rust](https://rustup.rs) (stable). Подойдёт тулчейн MSVC или GNU (для GNU нужен MinGW-w64 с `windres` в `PATH`).
+You need [Rust](https://rustup.rs) (stable) with either the MSVC or the GNU toolchain. For GNU you also need MinGW-w64 with `windres` on `PATH`.
 
 ```bash
 cargo build --release
 ```
 
-Готовый файл: `target/release/kvmlink.exe`. Иконку можно пересобрать командой `python assets/make_icon.py` (нужен Pillow).
+The result is `target/release/kvmlink.exe`. To regenerate the icon run `python assets/make_icon.py` (needs Pillow).
 
-Для отладки на одном компьютере можно запустить две независимые копии с разными переменными окружения: `KVMLINK_INSTANCE` (имя экземпляра) и `KVMLINK_CONFIG_DIR` (папка настроек). Тестовая копия не трогает брандмауэр.
+To debug on a single machine you can run two independent copies with different environment variables: `KVMLINK_INSTANCE` (instance name) and `KVMLINK_CONFIG_DIR` (settings folder). A test copy does not touch the firewall.
 
-### Устройство кода
+### Code layout
 
-| Файл | Что внутри |
+| File | Contents |
 |---|---|
-| `src/server.rs` | ПК: перехват ввода (низкоуровневые хуки), сопряжение, ответ на поиск |
-| `src/client.rs` | Ноутбук: ввод через `SendInput`, сопряжение, поиск ПК |
-| `src/proto.rs` | Формат кадров, шифрование, вывод ключей |
-| `src/clip.rs` | Синхронизация буфера обмена |
-| `src/ui.rs` | Окно и трей (чистый Win32) |
-| `src/setup.rs` | Брандмауэр, автозапуск, задача режима службы |
-| `src/svc.rs` | Запуск копии от SYSTEM в сессии пользователя |
+| `src/server.rs` | Captures local input (low-level hooks), pairing, discovery replies |
+| `src/client.rs` | Injects input with `SendInput`, pairing, discovery |
+| `src/proto.rs` | Frame format, encryption, key derivation |
+| `src/clip.rs` | Clipboard sync |
+| `src/ui.rs` | Window and tray icon (plain Win32) |
+| `src/setup.rs` | Firewall, autostart, service-mode task |
+| `src/svc.rs` | Starts a SYSTEM copy in the user's session |
 
-## Лицензия
+## Author
+
+Created by [hellsing](https://github.com/hellsing123134).
+
+## License
 
 [MIT](LICENSE)

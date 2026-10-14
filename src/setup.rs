@@ -144,7 +144,7 @@ pub fn set_service(on: bool, restart: bool) -> Result<(), String> {
         let d = read_oem(logf);
         let _ = std::fs::remove_file(logf);
         if d.is_empty() {
-            "запрос прав администратора отклонён".to_string()
+            "the administrator prompt was declined".to_string()
         } else {
             d
         }

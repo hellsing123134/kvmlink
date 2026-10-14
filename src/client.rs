@@ -94,7 +94,7 @@ fn resolve(host: &str, port: u16) -> std::io::Result<std::net::SocketAddr> {
     (host, port)
         .to_socket_addrs()?
         .next()
-        .ok_or_else(|| std::io::Error::other("неверный адрес"))
+        .ok_or_else(|| std::io::Error::other("invalid address"))
 }
 
 fn session(host: &str, port: u16, gen: u32, inj: &mut Injector) -> std::io::Result<()> {
@@ -132,8 +132,8 @@ fn session(host: &str, port: u16, gen: u32, inj: &mut Injector) -> std::io::Resu
                 if !accepted {
                     accepted = true;
                     CONNECTED.store(true, Relaxed);
-                    crate::ui::log(format!("Подключено к {}", addr.ip()));
-                    crate::ui::status(crate::ui::Status::Connected, &format!("Подключено к ПК ({})", addr.ip()));
+                    crate::ui::log(format!("Connected to {}", addr.ip()));
+                    crate::ui::status(crate::ui::Status::Connected, &format!("Connected to {}", addr.ip()));
                 }
                 match opener.open(&f) {
                     Some(m) => {
@@ -155,9 +155,9 @@ fn session(host: &str, port: u16, gen: u32, inj: &mut Injector) -> std::io::Resu
                 // The PC drops us right after HELLO when our key is not the one it has.
                 break Err(std::io::Error::other(match e.kind() {
                     std::io::ErrorKind::UnexpectedEof | std::io::ErrorKind::ConnectionReset => {
-                        "ПК отклонил подключение: ключ не совпадает, сопрягите устройства заново"
+                        "the other computer rejected the key; pair the devices again"
                     }
-                    _ => "соединение прервано",
+                    _ => "connection lost",
                 }));
             }
             Err(e) => break Err(e),
@@ -172,7 +172,7 @@ fn session(host: &str, port: u16, gen: u32, inj: &mut Injector) -> std::io::Resu
     CONNECTED.store(false, Relaxed);
     inj.release_all();
     if accepted {
-        crate::ui::log("Связь с ПК потеряна");
+        crate::ui::log("Connection lost");
     }
     res
 }
@@ -182,7 +182,7 @@ pub fn pair_with(host: &str, port: u16, pin: &str) -> Result<String, String> {
     use spake2::{Ed25519Group, Identity, Password, Spake2};
     use std::io::Read;
     let addr = resolve(host, port).map_err(|e| e.to_string())?;
-    let mut s = TcpStream::connect_timeout(&addr, Duration::from_secs(3)).map_err(|e| format!("ПК недоступен: {e}"))?;
+    let mut s = TcpStream::connect_timeout(&addr, Duration::from_secs(3)).map_err(|e| format!("computer unreachable: {e}"))?;
     let _ = s.set_read_timeout(Some(Duration::from_secs(5)));
     let (sp, msg_a) = Spake2::<Ed25519Group>::start_a(
         &Password::new(pin.as_bytes()),
@@ -191,17 +191,17 @@ pub fn pair_with(host: &str, port: u16, pin: &str) -> Result<String, String> {
     );
     let mut out = vec![MODE_PAIR, msg_a.len() as u8];
     out.extend_from_slice(&msg_a);
-    let io = |e: std::io::Error| format!("ошибка связи: {e}");
+    let io = |e: std::io::Error| format!("network error: {e}");
     s.write_all(&out).map_err(io)?;
     let mut hdr = [0u8; 1];
     s.read_exact(&mut hdr).map_err(io)?;
     if hdr[0] != 1 {
-        return Err("на ПК не открыто сопряжение (нажмите там «Сопрячь устройство»)".into());
+        return Err("pairing is not open on the other computer (click \"Add device\" there)".into());
     }
     s.read_exact(&mut hdr).map_err(io)?;
     let mut msg_b = vec![0u8; hdr[0] as usize];
     s.read_exact(&mut msg_b).map_err(io)?;
-    let k = sp.finish(&msg_b).map_err(|_| "ошибка сопряжения".to_string())?;
+    let k = sp.finish(&msg_b).map_err(|_| "pairing failed".to_string())?;
 
     let confirm = pair_confirm_secret(&k);
     let (mut sealer, mut opener) = pair(&confirm, &[0u8; SALT], false);
@@ -209,7 +209,7 @@ pub fn pair_with(host: &str, port: u16, pin: &str) -> Result<String, String> {
     let mut f = [0u8; FRAME];
     let ok = s.read_exact(&mut f).is_ok() && matches!(opener.open(&f), Some(m) if m.t == HELLO);
     if !ok {
-        return Err("неверный PIN".into());
+        return Err("wrong PIN".into());
     }
     Ok(long_term_key(&k))
 }
@@ -278,8 +278,8 @@ pub fn start(host: String, port: u16, block_kb: bool) {
                 Ok(()) => reported = false,
                 Err(e) => {
                     if !reported {
-                        crate::ui::log(format!("Нет связи с ПК: {e}. Пробую снова..."));
-                        crate::ui::status(crate::ui::Status::Waiting, "Ищу ПК...");
+                        crate::ui::log(format!("No connection: {e}. Retrying..."));
+                        crate::ui::status(crate::ui::Status::Waiting, "Searching...");
                         reported = true;
                     }
                 }
